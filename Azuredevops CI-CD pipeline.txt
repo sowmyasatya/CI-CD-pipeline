@@ -245,6 +245,7 @@ variables:
   vmImage : ubuntu-latest
   webappname: abcd
   azuresub: Free Trial(********************************)
+  project: '**/*.sln'
 
 stages:
   - stage: build
@@ -254,13 +255,13 @@ stages:
           - task: DotNetCoreCLI@2
             inputs:
               command: 'restore'
-              projects: '**/*.sln'
+              projects: '$(project)'
               feedsToUse: 'select'
           
           - task: DotNetCoreCLI@2
             inputs:
               command: 'build'
-              projects: '**/*.sln'
+              projects: '$(project)'
               arguments: '--configuration $(BuildConfiguration)'
         
           - task: DotNetCoreCLI@2
