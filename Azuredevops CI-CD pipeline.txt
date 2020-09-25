@@ -1,0 +1,373 @@
+*****************Java jar CI/CD************************
+
+->clone project to azure repo.
+->In pipeline select new pipeline.
+->Use the classic editor to create a pipeline without Yaml.
+->Select Azure repos git and continue.
+->Now select Maven as template.
+->If your pom file is outside then leave it as default or if it is 
+inside the folder then give the path of the folder in maven POM file.
+->Check contents in copy files is jar or war.
+->Now save & queue
+->save and run(This pipeline is to get artifact)
+(meanwhile)
+->Create appServices in portal.azure.com
+->click add create new resource group or exisiting resource group.
+->create unique instance name.
+->publish - select code 
+-> Runtime stack java 8 - Tomcat 8.5
+-> operating system can be Linux or windows
+->select avaliable region
+->select Review + create
+->select create
+(Now again to dev.azure)
+->Now select releases 
+->select new and select new release pipeline
+->Add an artifact, Select build and select add
+->check on stage 1 job, 1 task
+->select Deploy Azure app Service
+->Authorize azure subscription
+->Add type windows or linux depending on what we want and added in appservices
+->Select app services name
+->In deploy azure app services click on ... dots in package or folder and select the .jar file in target folder.
+->save and create release and click create.
+
+*****************Java War CI/CD************************
+
+->clone project to azure repo.
+->In pipeline select new pipeline.
+->Use the classic editor to create a pipeline without Yaml.
+->Select Azure repos git and continue.
+->Now select Maven as template.
+->If your pom file is outside then leave it as default or if it is 
+inside the folder then give the path of the folder in maven POM file.
+->Check contents in copy files is jar or war.
+->Now save & queue
+->save and run(This pipeline is to get artifact)
+(meanwhile)
+->Create appServices in portal.azure.com
+->click add create new resource group or exisiting resource group.
+->create unique instance name.
+->publish - select code 
+-> Runtime stack java 8 - Tomcat 8.5
+-> operating system can be Linux or windows
+->select avaliable region
+->select Review + create
+->select create
+(Now again to dev.azure)
+->Now select releases 
+->select new and select new release pipeline
+->Add an artifact, Select build and select add
+->check on stage 1 job, 1 task
+->select Deploy Azure app Service
+->Authorize azure subscription
+->Add type windows or linux depending on what we want and added in appservices
+->Select app services name
+->In deploy azure app services click on ... dots in package or folder and select the .jar file in target folder.
+->save and create release and click create.
+
+******************************************************************************************
+                                $$$$$$$$$$ DotNet $$$$$$$$$$$
+trigger:
+- master
+
+pool:
+  vmImage : ubuntu-latest
+
+variables:
+  BuildConfiguration: Release
+
+steps:
+  - task: DotNetCoreCLI@2
+    inputs:
+      command: 'restore'
+      projects: '**/*.sln'
+      feedsToUse: 'select'
+  
+  - task: DotNetCoreCLI@2
+    inputs:
+      command: 'build'
+      projects: '**/*.sln'
+      arguments: '--configuration $(BuildConfiguration)'
+ 
+  - task: DotNetCoreCLI@2
+    inputs:
+      command: 'publish'
+      publishWebProjects: true
+      arguments: '--configuration $(BuildConfiguration)'
+      modifyOutputPath: false
+  
+  - task: CopyFiles@2
+    inputs:
+      Contents: '**/*.zip'
+      TargetFolder: '$(build.artifactstagingdirectory)'
+    
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+      ArtifactName: 'drop'
+      publishLocation: 'Container'
+
+#########################################
+
+trigger:
+- none
+
+pool:
+  vmImage : ubuntu-latest
+
+variables:
+  BuildConfiguration: Release
+
+stages:
+  - stage: build
+    jobs:
+      - job: build
+        steps:
+          - task: DotNetCoreCLI@2
+            inputs:
+              command: 'restore'
+              projects: '**/*.sln'
+              feedsToUse: 'select'
+          
+          - task: DotNetCoreCLI@2
+            inputs:
+              command: 'build'
+              projects: '**/*.sln'
+              arguments: '--configuration $(BuildConfiguration)'
+        
+          - task: DotNetCoreCLI@2
+            inputs:
+              command: 'publish'
+              publishWebProjects: true
+              arguments: '--configuration $(BuildConfiguration)'
+              modifyOutputPath: false
+          
+          - task: CopyFiles@2
+            inputs:
+              Contents: '**/*.zip'
+              TargetFolder: '$(build.artifactstagingdirectory)'
+            
+          - task: PublishBuildArtifacts@1
+            inputs:
+              PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+              ArtifactName: 'drop'
+              publishLocation: 'Container'
+  
+  - stage: release
+    jobs:
+      - job: release
+        steps:
+          - task: DownloadBuildArtifacts@0
+            inputs:
+              buildType: 'current'
+              downloadType: 'single'
+              artifactName: 'drop'
+              downloadPath: '$(System.ArtifactsDirectory)'
+          
+          - task: AzureRmWebAppDeployment@4
+            inputs:
+              ConnectionType: 'AzureRM'
+              azureSubscription: 'Free Trial(*******************************)'
+              appType: 'webApp'
+              WebAppName: 'abcd'
+              packageForLinux: '$(Pipeline.Workspace)/**/*.zip'
+
+#######################################
+
+
+trigger:
+- none
+
+pool:
+  vmImage : ubuntu-latest
+
+variables:
+  BuildConfiguration: Release
+
+stages:
+  - stage: build
+    jobs:
+      - job: build
+        steps:
+          - task: DotNetCoreCLI@2
+            inputs:
+              command: 'restore'
+              projects: '**/*.sln'
+              feedsToUse: 'select'
+          
+          - task: DotNetCoreCLI@2
+            inputs:
+              command: 'build'
+              projects: '**/*.sln'
+              arguments: '--configuration $(BuildConfiguration)'
+        
+          - task: DotNetCoreCLI@2
+            inputs:
+              command: 'publish'
+              publishWebProjects: true
+              arguments: '--configuration $(BuildConfiguration)'
+              modifyOutputPath: false
+          
+          - task: CopyFiles@2
+            inputs:
+              Contents: '**/*.zip'
+              TargetFolder: '$(build.artifactstagingdirectory)'
+            
+          - task: PublishBuildArtifacts@1
+            inputs:
+              PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+              ArtifactName: 'drop'
+              publishLocation: 'Container'
+  
+  - stage: release
+    jobs:
+      - deployment: release
+        environment: dev
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureRmWebAppDeployment@4
+                  inputs:
+                    ConnectionType: 'AzureRM'
+                    azureSubscription: 'Free Trial(*********************************)'
+                    appType: 'webApp'
+                    WebAppName: 'abcd'
+                    packageForLinux: '$(Pipeline.Workspace)/**/*.zip'
+					
+##################################3
+trigger:
+- none
+
+variables:
+  BuildConfiguration: Release
+  vmImage : ubuntu-latest
+  webappname: abcd
+  azuresub: Free Trial(********************************)
+
+stages:
+  - stage: build
+    jobs:
+      - job: build
+        steps:
+          - task: DotNetCoreCLI@2
+            inputs:
+              command: 'restore'
+              projects: '**/*.sln'
+              feedsToUse: 'select'
+          
+          - task: DotNetCoreCLI@2
+            inputs:
+              command: 'build'
+              projects: '**/*.sln'
+              arguments: '--configuration $(BuildConfiguration)'
+        
+          - task: DotNetCoreCLI@2
+            inputs:
+              command: 'publish'
+              publishWebProjects: true
+              arguments: '--configuration $(BuildConfiguration)'
+              modifyOutputPath: false
+          
+          - task: CopyFiles@2
+            inputs:
+              Contents: '**/*.zip'
+              TargetFolder: '$(build.artifactstagingdirectory)'
+            
+          - task: PublishBuildArtifacts@1
+            inputs:
+              PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+              ArtifactName: 'drop'
+              publishLocation: 'Container'
+  
+  - stage: release 
+    jobs:
+      - deployment: release
+        environment: dev
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureRmWebAppDeployment@4
+                  inputs:
+                    ConnectionType: 'AzureRM'
+                    azureSubscription: '$(azuresub)'
+                    appType: 'webApp'
+                    WebAppName: '$(webappname)'
+                    packageForLinux: '$(System.DefaultWorkingDirectory)/**/*.zip'
+                  enabled: false
+
+********************************************************************************************************				  
+	                      $$$$$$$$$$$$$$$$$$$$$$Nodejs/Angular$$$$$$$$$$$$$$$$$$$$$$
+trigger:
+- master
+
+pool:
+  vmImage: 'ubuntu-latest'
+#
+variables:
+  BuildConfiguration: Release
+  version: 10.x
+  webappname : abcd
+  azuresub : Free Trial(**************************************)
+ #
+stages:
+  - stage: build
+    jobs:
+      - job: build
+        steps:
+          - task: NodeTool@0
+            inputs:
+              versionSpec: '10.x'
+          
+          - task: Npm@1
+            inputs:
+              command: 'install'
+          
+          - task: Npm@1
+            inputs:
+              command: 'custom'
+              customCommand: 'install -g @angular/cli@latest'
+          
+          - task: Npm@1
+            inputs:
+              command: 'custom'
+              customCommand: 'run build'
+          
+          - task: CopyFiles@2
+            inputs:
+              SourceFolder: 'dist'
+              Contents: '**'
+              TargetFolder: '$(build.artifactstagingdirectory)'
+          
+          - task: PublishBuildArtifacts@1
+            inputs:
+              PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+              ArtifactName: 'drop'
+              publishLocation: 'Container'
+
+  - stage: release 
+    jobs:
+      - deployment: release
+        environment: dev
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureRmWebAppDeployment@4
+                  inputs:
+                    ConnectionType: 'AzureRM'
+                    azureSubscription: 'Free Trial(*********************************)'
+                    appType: 'webApp'
+                    WebAppName: 'abcdapp'
+                    packageForLinux: '$(System.DefaultWorkingDirectory)/**/dist'
+	
+		
+*****************************************
+java - .jar / .war
+.net - .zip
+angular - dist
+
+
+
